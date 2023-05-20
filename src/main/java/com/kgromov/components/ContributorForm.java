@@ -3,14 +3,13 @@ package com.kgromov.components;
 import com.kgromov.domain.Contributor;
 import com.kgromov.repository.ContributorRepository;
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.KeyNotifier;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
-import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
@@ -18,37 +17,37 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @SpringComponent
 @UIScope
-public class ContributorEditor extends VerticalLayout implements KeyNotifier {
+public class ContributorForm extends FormLayout {
     private final ContributorRepository repository;
     private Contributor selectedContributor;
 
     /* Fields to edit properties in Contributor entity */
-    TextField login = new TextField("Login");
-    TextField firstName = new TextField("First name");
-    TextField lastName = new TextField("Last name");
-    IntegerField count = new IntegerField("Count");
+    private TextField login = new TextField("Login");
+    private TextField firstName = new TextField("First name");
+    private TextField lastName = new TextField("Last name");
+    private IntegerField count = new IntegerField("Count");
 
     /* Action buttons */
-    Button save = new Button("Save", VaadinIcon.CHECK.create());
-    Button cancel = new Button("Cancel");
-    Button delete = new Button("Delete", VaadinIcon.TRASH.create());
-    HorizontalLayout actions = new HorizontalLayout(save, cancel, delete);
+    private Button save = new Button("Save", VaadinIcon.CHECK.create());
+    private Button cancel = new Button("Cancel");
+    private Button delete = new Button("Delete", VaadinIcon.TRASH.create());
 
-    Binder<Contributor> binder = new Binder<>(Contributor.class);
+    private Binder<Contributor> binder = new BeanValidationBinder<>(Contributor.class);
     private ChangeHandler changeHandler;
 
     @Autowired
-    public ContributorEditor(ContributorRepository repository) {
+    public ContributorForm(ContributorRepository repository) {
         this.repository = repository;
-
-        add(login, firstName, lastName, count, actions);
 
         // bind using naming convention
         binder.bindInstanceFields(this);
+        binder.addStatusChangeListener(e -> save.setEnabled(binder.isValid()));
 
-        // Configure and style components
-        setSpacing(true);
+        add(login, firstName, lastName, count, this.createButtonsLayout());
+        setVisible(false);
+    }
 
+    private HorizontalLayout createButtonsLayout() {
         save.getElement().getThemeList().add("primary");
         delete.getElement().getThemeList().add("error");
 
@@ -59,9 +58,10 @@ public class ContributorEditor extends VerticalLayout implements KeyNotifier {
         delete.addClickListener(e -> delete());
         delete.addClickShortcut(Key.DELETE);
 
-        cancel.addClickListener(e -> editCustomer(selectedContributor));
+        cancel.addClickListener(e -> editContributor(null));
         cancel.addClickShortcut(Key.ESCAPE);
-        setVisible(false);
+
+        return new HorizontalLayout(save, delete, cancel);
     }
 
     void delete() {
@@ -70,29 +70,27 @@ public class ContributorEditor extends VerticalLayout implements KeyNotifier {
     }
 
     void save() {
-        repository.save(selectedContributor);
-        changeHandler.onChange();
+        if (binder.isValid()) {
+            repository.save(selectedContributor);
+            changeHandler.onChange();
+        }
     }
 
-    public final void editCustomer(Contributor contributor) {
+    public final void editContributor(Contributor contributor) {
         if (contributor == null) {
-            setVisible(false);
-            return;
-        }
-        final boolean isNew = contributor.getId() != null;
-        if (isNew) {
+            this.close();
+        } else {
+            // Bind customer properties to similarly named fields
             selectedContributor = contributor;
+            binder.setBean(selectedContributor);
+            setVisible(true);
+            login.focus();
         }
-        else {
-            selectedContributor = repository.findById(contributor.getId()).orElseThrow();
-        }
+    }
 
-        // Bind customer properties to similarly named fields
-        // Could also use annotation or "manual binding" or programmatically
-        // moving values from fields to entities before saving
-        binder.setBean(selectedContributor);
-        setVisible(true);
-        firstName.focus();
+    public void close() {
+        binder.setBean(null);
+        setVisible(false);
     }
 
     public interface ChangeHandler {
@@ -100,8 +98,7 @@ public class ContributorEditor extends VerticalLayout implements KeyNotifier {
     }
 
     public void setChangeHandler(ChangeHandler handler) {
-        // ChangeHandler is notified when either save or delete
-        // is clicked
+        // ChangeHandler is notified when either save or delete is clicked
         changeHandler = handler;
     }
 }

@@ -13,7 +13,7 @@ import lombok.*;
         @UniqueConstraint(columnNames={"login"})
 )*/
 @Data
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(access = AccessLevel.PUBLIC)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(of = {"id"})
 @ToString(exclude = {"count"})

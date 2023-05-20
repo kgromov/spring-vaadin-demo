@@ -1,9 +1,9 @@
 package com.kgromov.views;
 
-import com.kgromov.components.ContributorEditor;
+import com.kgromov.components.ContributorForm;
 import com.kgromov.domain.Contributor;
-import com.kgromov.repository.ContributorRepository;
 import com.kgromov.service.ContributorService;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -15,38 +15,34 @@ import com.vaadin.flow.router.Route;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Random;
-import java.util.function.Supplier;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
+import static com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment.STRETCH;
 
 @Route("/contributors")
 public class ContributorView extends VerticalLayout {
     private final ContributorService contributorService;
-    private final ContributorEditor editor;
-    private final Grid<Contributor> grid = new Grid<>(Contributor.class);
     private final TextField filter = new TextField();
+    private final Grid<Contributor> grid = new Grid<>(Contributor.class);
+    private final ContributorForm form;
 
-    public ContributorView(ContributorService contributorService, ContributorEditor editor) {
+    public ContributorView(ContributorService contributorService, ContributorForm form) {
         this.contributorService = contributorService;
-        this.editor = editor;
+        this.form = form;
 
         setSizeFull();
         this.configureGrid();
-        add(getToolbar(), grid, editor);
-
-        editor.setChangeHandler(() -> {
-            editor.setVisible(false);
+        form.setChangeHandler(() -> {
+            form.setVisible(false);
             applyFilter(filter.getValue());
         });
-
+        add(this.getToolbar(), this.getContent());
         applyFilter(null);
     }
 
     private void configureGrid() {
         grid
                 .asSingleSelect()
-                .addValueChangeListener(e -> editor.editCustomer(e.getValue()));
+                .addValueChangeListener(e -> form.editContributor(e.getValue()));
 
         String[] columns = Arrays.stream(Contributor.class.getDeclaredFields()).map(Field::getName).toArray(String[]::new);
         grid.setColumns(columns);
@@ -63,13 +59,20 @@ public class ContributorView extends VerticalLayout {
         filter.addValueChangeListener(field -> applyFilter(field.getValue()));
 
         Button addNewButton = new Button("New contributor", VaadinIcon.PLUS.create());
-        Random random = new Random();
-        Supplier<Contributor> defaultContributor = () -> Contributor.builder().id(random.nextLong()).login("").firstName("").lastName("").build();
-        addNewButton.addClickListener(e -> editor.editCustomer(defaultContributor.get()));
+        addNewButton.addClickListener(e -> form.editContributor(new Contributor()));
 
         HorizontalLayout toolbar = new HorizontalLayout(filter, addNewButton);
         toolbar.addClassName("toolbar");
         return toolbar;
+    }
+
+    private Component getContent() {
+        HorizontalLayout content = new HorizontalLayout(grid, form);
+        content.setFlexGrow(2, grid);
+        content.setFlexGrow(1, form);
+        content.addClassNames("content");
+        content.setSizeFull();
+        return content;
     }
 
     private void applyFilter(String filterValue) {
