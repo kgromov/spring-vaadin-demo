@@ -58,7 +58,7 @@ public class ContributorForm extends FormLayout {
         delete.addClickListener(e -> delete());
         delete.addClickShortcut(Key.DELETE);
 
-        cancel.addClickListener(e -> editContributor(null));
+        cancel.addClickListener(e -> close());
         cancel.addClickShortcut(Key.ESCAPE);
 
         return new HorizontalLayout(save, delete, cancel);
@@ -76,6 +76,11 @@ public class ContributorForm extends FormLayout {
         }
     }
 
+    public void close() {
+        binder.setBean(null);
+        setVisible(false);
+    }
+
     public final void editContributor(Contributor contributor) {
         if (contributor == null) {
             this.close();
@@ -86,11 +91,6 @@ public class ContributorForm extends FormLayout {
             setVisible(true);
             login.focus();
         }
-    }
-
-    public void close() {
-        binder.setBean(null);
-        setVisible(false);
     }
 
     public interface ChangeHandler {
